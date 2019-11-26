@@ -48,6 +48,7 @@ class Model(tf.keras.Model):
         
         self.learning_rate = 0.01
         self.batch_size = 100
+        self.epochs = 1
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
     
     @tf.function
@@ -58,4 +59,10 @@ class Model(tf.keras.Model):
     def loss_function(self, encoded, originals):
       encoded = tf.dtypes.cast(encoded, tf.float32)
       originals = tf.dtypes.cast(originals, tf.float32)
-      return tf.reduce_sum(tf.math.square(originals - tf.reshape(encoded, originals.shape)))
+      return (1/len(encoded)) * tf.math.sqrt(tf.reduce_sum(tf.math.square(tf.norm(originals - tf.reshape(encoded, originals.shape)))))
+
+
+    def accuracy_function(self):
+        # SNR: signal to noise ratio
+        # TODO: scipy.stats.signaltonoise is deprecated! D:
+        pass
