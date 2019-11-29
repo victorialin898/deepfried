@@ -8,6 +8,8 @@ verify_ssl = true
 [packages]
 tensorflow = "*"
 numpy = "*"
+scipy = "*"
+librosa = "*"
 
 [requires]
 python_version = "3.7"
