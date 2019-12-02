@@ -7,41 +7,48 @@ from model import Model
 import sys
 import time
 
-
+"""
+    Trains model in batches on corrupted and original audio files.
+"""
 def train(model, corrupted, originals):
 
-    for i in range(int(len(corrupted)/model.batch_size)):
-        train_x = corrupted[i*model.batch_size:(i+1)*model.batch_size]
-        train_y = originals[i*model.batch_size:(i+1)*model.batch_size]
+    int bs = model.batch_size
+    for i in range(len(corrupted) // bs)):
+        batch_corrupted = corrupted[i*bs : (i+1)*bs]
+        batch_originals = originals[i*bs : (i+1)*bs]
         
         with tf.GradientTape() as tape:
-            encodings = model.call(train_x)
-            loss = model.loss_function(encodings, train_y)
+            batch_sharpened = model.call(batch_corrupted)
+            loss = model.loss_function(batch_sharpened, batch_originals)
         
-        gradients = tape.gradient(loss, model.variables)
+        gradients = tape.gradient(loss, model.variables) # Maybe trainable_variables here?
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
+"""
+    Tests model in batches on corrupted and original audio files.
 
+    @returns : average loss over input test data
+"""
 def test(model, corrupted, originals):
-    for i in range(int(len(corrupted)/model.batch_size)):
-        train_x = corrupted[i*model.batch_size:(i+1)*model.batch_size]
-        train_y = originals[i*model.batch_size:(i+1)*model.batch_size]
+
+    losses = []
+
+    int bs = model.batch_size
+    for i in range(len(corrupted) // bs)):
+        batch_corrupted = corrupted[i*bs : (i+1)*bs]
+        batch_originals = originals[i*bs : (i+1)*bs]
         
         with tf.GradientTape() as tape:
-            encodings = model.call(train_x)
-            loss = model.loss_function(encodings, train_y)
+            batch_sharpened = model.call(batch_corrupted)
+            loss = model.loss_function(batch_sharpened, batch_originals)
+            losses.append(loss)
 
-        gradients = tape.gradient(loss, model.variables)
-        model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-    #TODO should be calculating loss here i think
-
-    return 
+    return tf.reduce_mean(losses)
 
 def main():	
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
-        print("USAGE: python assignment.py <Data Type>")
-        print("<Data Type>: [VCTK/PIANO]")
+        print("USAGE: python assignment.py <Data Set>")
+        print("<Data Set>: [VCTK/PIANO]")
         exit()
             
     print("Running preprocessing...")
@@ -49,14 +56,16 @@ def main():
         train_corrupted, train_originals, test_corrupted, test_originals = get_data("filepath", VCTK=True)  # TODO: finish preprocessing
     elif sys.argv[1] == "PIANO":
         train_corrupted, train_originals, test_corrupted, test_originals = get_data("filepath", VCTK=False)
-
     print("Preprocessing complete.")
 
     model = Model()
 
+    print("Beginning training...")
     for _ in range(model.epochs):
 	    train(model, train_corrupted, train_originals)
+    print("Training complete.")
 
+    print("Beginning testing...")
     test(model, test_corrupted, test_originals)
 
 

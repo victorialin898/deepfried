@@ -5,9 +5,21 @@ import numpy as np
 class Encoder(tf.keras.layers.Layer):
     def __init__(self):
         super(Encoder, self).__init__()
-        self.encoder_conv_1 = tf.keras.layers.Conv2D(10, 3, (2,2), padding='same', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.encoder_conv_2 = tf.keras.layers.Conv2D(10, 3, (2,2), padding='same', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.encoder_conv_3 = tf.keras.layers.Conv2D(10, 3, (2,2), padding='same', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+
+        # I believe these should be Conv1D, because the data is a time series. Right?
+        # TODO: decide how many Conv2D layers we want. The paper calls this hyperparameter B, so currently B=3 for us.
+        #       The paper uses B=4. Note that this B should be the same in the Encoder and the Decoder
+
+        # Given encoder_conv_b
+        #   - number of filters (i.e. output depth) = max(2^(6+b), 512)
+        #   - length of filters (remember that it's Conv1D) = min(2^(7-b) + 1, 9)
+        #   - stride = 2
+        self.encoder_conv_1 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        # Add keras.layers.BatchNormalization()
+        self.encoder_conv_2 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        # Add keras.layers.BatchNormalization()
+        self.encoder_conv_3 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        # Add keras.layers.BatchNormalization()
 
         self.dropout_rate = 0.001
         self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
@@ -17,25 +29,36 @@ class Encoder(tf.keras.layers.Layer):
     @tf.function
     def call(self, samples):
         # TODO: we need subpixel shuffling layer here ! each layer has a dimshuffle
+        # Here's a helpful article for understanding subpixel stuff (https://medium.com/@hirotoschwert/introduction-to-deep-super-resolution-c052d84ce8cf)
 
-        output = tf.nn.relu(self.dropout(self.encoder_conv_1(samples)))
-        output = tf.nn.relu(self.dropout(self.encoder_conv_2(output)))
-        output = tf.nn.relu(self.dropout(self.encoder_conv_3(output)))
+        output = self.dropout(self.encoder_conv_1(samples))
+        output = self.dropout(self.encoder_conv_2(output))
+        output = self.dropout(self.encoder_conv_3(output))
         return output
         
 
 # Upsampling blocks for bottleneck architecture
 class Decoder(tf.keras.layers.Layer):
     def __init__(self):
-        super(Decoder, self).__init__()        
-        self.decoder_deconv_1 = tf.keras.layers.Conv2DTranspose(10, 3, (2,2), padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_deconv_2 = tf.keras.layers.Conv2DTranspose(10, 3, (2,2), padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_deconv_3 = tf.keras.layers.Conv2DTranspose(1, 3, (2,2), padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        super(Decoder, self).__init__()  
+
+        # TODO: Figure out what layer to use for upsampling since keras has no Conv1DTranspose
+        #   - keras.layers.UpSampling1D (not learnable, see https://stackoverflow.com/questions/53654310/what-is-the-difference-between-upsampling2d-and-conv2dtranspose-functions-in-ker)
+        #   - create our own (https://stackoverflow.com/questions/44061208/how-to-implement-the-conv1dtranspose-in-keras)
+
+        # Given encoder_conv_b
+        #   - number of filters (i.e. output depth) = max(2^(7+B-b+1), 512)
+        #   - length of filters (remember that it's Conv1D) = min(2^(7-(B-b+1)) + 1, 9)
+        #   - stride = ???????
+        self.decoder_deconv_1 = tf.keras.layers.Conv2DTranspose(filters=1024, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_2 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_3 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
 
         # TODO: leakurelu vs relu? which is better
 
     @tf.function
     def call(self, encoder_output):
+        # Why does the decoder have no dropout?
         return self.decoder_deconv_3(self.decoder_deconv_2(self.decoder_deconv_1(encoder_output)))
 
 
@@ -46,9 +69,9 @@ class Model(tf.keras.Model):
         self.encoder = Encoder()
         self.decoder = Decoder()
         
-        self.learning_rate = 0.01
-        self.batch_size = 100
-        self.epochs = 1
+        self.learning_rate = 0.01   # Paper uses .0001
+        self.batch_size = 100       # Batch size vs patch size?
+        self.epochs = 1             # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
     
     @tf.function
@@ -66,3 +89,5 @@ class Model(tf.keras.Model):
         # SNR: signal to noise ratio
         # TODO: scipy.stats.signaltonoise is deprecated! D:
         pass
+
+# TODO: Reverse data preprocessing to turn the output of our model into a listenable .wav file?
