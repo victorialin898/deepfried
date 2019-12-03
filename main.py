@@ -10,10 +10,10 @@ import time
 """
     Trains model in batches on corrupted and original audio files.
 """
-def train(model, corrupted, originals):
 
-    int bs = model.batch_size
-    for i in range(len(corrupted) // bs)):
+def train(model, corrupted, originals):
+    bs = model.batch_size
+    for i in range(len(corrupted) // bs):
         batch_corrupted = corrupted[i*bs : (i+1)*bs]
         batch_originals = originals[i*bs : (i+1)*bs]
         
@@ -33,8 +33,8 @@ def test(model, corrupted, originals):
 
     losses = []
 
-    int bs = model.batch_size
-    for i in range(len(corrupted) // bs)):
+    bs = model.batch_size
+    for i in range(len(corrupted) // bs):
         batch_corrupted = corrupted[i*bs : (i+1)*bs]
         batch_originals = originals[i*bs : (i+1)*bs]
         
@@ -53,20 +53,20 @@ def main():
             
     print("Running preprocessing...")
     if sys.argv[1] == "VCTK":
-        train_corrupted, train_originals, test_corrupted, test_originals = get_data("filepath", VCTK=True)  # TODO: finish preprocessing
+        train_corrupted, train_originals, test_corrupted, test_originals = get_data(VCTK=True) 
     elif sys.argv[1] == "PIANO":
-        train_corrupted, train_originals, test_corrupted, test_originals = get_data("filepath", VCTK=False)
+        train_corrupted, train_originals, test_corrupted, test_originals = get_data(VCTK=False)
     print("Preprocessing complete.")
 
-    model = Model()
+    # model = Model()
 
-    print("Beginning training...")
-    for _ in range(model.epochs):
-	    train(model, train_corrupted, train_originals)
-    print("Training complete.")
+    # print("Beginning training...")
+    # for _ in range(model.epochs):
+	#     train(model, train_corrupted, train_originals)
+    # print("Training complete.")
 
-    print("Beginning testing...")
-    test(model, test_corrupted, test_originals)
+    # print("Beginning testing...")
+    # test(model, test_corrupted, test_originals)
 
 
 

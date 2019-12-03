@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import scipy
 
 # Downsampling blocks for bottleneck architecture
 class Encoder(tf.keras.layers.Layer):
@@ -85,9 +86,8 @@ class Model(tf.keras.Model):
       return (1/len(encoded)) * tf.math.sqrt(tf.reduce_sum(tf.math.square(tf.norm(originals - tf.reshape(encoded, originals.shape)))))
 
 
-    def accuracy_function(self):
+    def accuracy_function(self, encoded):
         # SNR: signal to noise ratio
-        # TODO: scipy.stats.signaltonoise is deprecated! D:
-        pass
+        return scipy.stats.signaltonoise(encoded, axis=0, ddof=0)
 
 # TODO: Reverse data preprocessing to turn the output of our model into a listenable .wav file?
