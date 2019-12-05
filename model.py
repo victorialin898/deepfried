@@ -15,14 +15,13 @@ class Encoder(tf.keras.layers.Layer):
         #   - number of filters (i.e. output depth) = max(2^(6+b), 512)
         #   - length of filters (remember that it's Conv1D) = min(2^(7-b) + 1, 9)
         #   - stride = 2
-        self.encoder_conv_1 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        # Add keras.layers.BatchNormalization()
-        self.encoder_conv_2 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        # Add keras.layers.BatchNormalization()
-        self.encoder_conv_3 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        # Add keras.layers.BatchNormalization()
+        self.encoder_conv_1 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.encoder_conv_2 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.encoder_conv_3 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        
+        self.batch_norm = tf.keras.layers.BatchNormalization()
 
-        self.dropout_rate = 0.001
+        self.dropout_rate = 0.5 # From paper, seems kind of high but Ok
         self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
        
         # TODO: change stride, kernel no, num filters to match our preprocessed output
@@ -32,9 +31,9 @@ class Encoder(tf.keras.layers.Layer):
         # TODO: we need subpixel shuffling layer here ! each layer has a dimshuffle
         # Here's a helpful article for understanding subpixel stuff (https://medium.com/@hirotoschwert/introduction-to-deep-super-resolution-c052d84ce8cf)
 
-        output = self.dropout(self.encoder_conv_1(samples))
-        output = self.dropout(self.encoder_conv_2(output))
-        output = self.dropout(self.encoder_conv_3(output))
+        output = self.batch_norm(self.dropout(self.encoder_conv_1(samples)))
+        output = self.batch_norm(self.dropout(self.encoder_conv_2(output)))
+        output = self.batch_norm(self.dropout(self.encoder_conv_3(output)))
         return output
         
 
@@ -51,16 +50,19 @@ class Decoder(tf.keras.layers.Layer):
         #   - number of filters (i.e. output depth) = max(2^(7+B-b+1), 512)
         #   - length of filters (remember that it's Conv1D) = min(2^(7-(B-b+1)) + 1, 9)
         #   - stride = ???????
-        self.decoder_deconv_1 = tf.keras.layers.Conv2DTranspose(filters=1024, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_deconv_2 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_deconv_3 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_1 = tf.keras.layers.Conv2DTranspose(filters=1024, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_2 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_3 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
 
-        # TODO: leakurelu vs relu? which is better
+        self.batch_norm = tf.keras.layers.BatchNormalization()
 
     @tf.function
     def call(self, encoder_output):
-        # Why does the decoder have no dropout?
-        return self.decoder_deconv_3(self.decoder_deconv_2(self.decoder_deconv_1(encoder_output)))
+        # In the paper, the downsampling block (decoder) consists only of a convolution and ReLu
+        output = self.batch_norm(self.decoder_deconv_1(encoder_output))
+        output = self.batch_norm(self.decoder_deconv_2(output))
+        output = self.batch_norm(self.decoder_deconv_3(output))
+        return output
 
 
 # Main model: performs autoeocoding and the subpixel shuffling
@@ -70,9 +72,9 @@ class Model(tf.keras.Model):
         self.encoder = Encoder()
         self.decoder = Decoder()
         
-        self.learning_rate = 0.01   # Paper uses .0001
-        self.batch_size = 100       # Batch size vs patch size?
-        self.epochs = 1             # Paper uses 400
+        self.learning_rate = 10e-4   # Paper uses 10e-4
+        self.batch_size = 128        # Batch size=128 vs patch size=6000
+        self.epochs = 1              # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
     
     @tf.function
@@ -86,8 +88,13 @@ class Model(tf.keras.Model):
       return (1/len(encoded)) * tf.math.sqrt(tf.reduce_sum(tf.math.square(tf.norm(originals - tf.reshape(encoded, originals.shape)))))
 
 
-    def accuracy_function(self, encoded):
-        # SNR: signal to noise ratio
-        return scipy.stats.signaltonoise(encoded, axis=0, ddof=0)
+    # Re-implementation of scipy.stats.signaltonoise which is deprecated :(
+    def accuracy_function(self, encoded, originals):
+        # Using equation for "SNR Calculation - Complicated" from sciencing.com
+        signal = tf.reduce_mean(originals, axis=[1,2])
+        noise = tf.math.reduce_std(originals - encoded, axis=[1,2])
+        snr = 20 * tf.math.log(signal / noise) / tf.math.log(10.0)
+        return snr
+
 
 # TODO: Reverse data preprocessing to turn the output of our model into a listenable .wav file?
