@@ -12,10 +12,10 @@ import librosa
 """
     Extracts data from .wav files, either VCTK/PIANO, and returns them as audio time serie
     @param VCTK : whether to to load and return the voice data. If false, loads the piano data.
-    @returns : a tuple of the form (train_corrupted, train_originals, test_corrupted, test_originals)
+    @returns : a tuple of the form (train_corrupted, train_originals, test_corrupted, test_originals, demo_sr)
 """
 def get_data(VCTK=False):
-    
+
     audio_type = ['hr', 'lr', 'pr', 'sp']
 
     """
@@ -36,6 +36,8 @@ def get_data(VCTK=False):
 
     # Retrieve high resolution ones which we will corrupt: array of variable length arrays size (data points ,)
     originals = np.squeeze(files['hr'][:,:1])
+    demo_sr = np.squeeze(files['hr'][:,1:][:20])
+
 
     # Cubic interpolation so they are all the same size, discretize train and test samples
     patch_length = 6000
@@ -53,7 +55,8 @@ def get_data(VCTK=False):
     test_corrupted = corrupted[:cutoff_index]
     test_originals =  originals[cutoff_index:]
 
+
     print("Generated %d samples of HR patch length: %d, LR patch length = %d, downsampling factor = %d" %(upscaled.shape[0], upscaled.shape[1], corrupted.shape[1], downsample_factor))
 
     # Figure out validation
-    return train_corrupted, train_originals, test_corrupted, test_originals
+    return train_corrupted, train_originals, test_corrupted, test_originals, demo_sr

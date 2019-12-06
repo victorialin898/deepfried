@@ -22,30 +22,30 @@ class Encoder(tf.keras.layers.Layer):
         self.encoder_conv_1 = Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
         self.encoder_conv_2 = Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
         self.encoder_conv_3 = Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        
+
         # keeping alpha at 0.2 for now
         self.relu = LeakyReLU(alpha=0.2)
 
 
-        self.batch_norm = BatchNormalization()       
+        self.batch_norm = BatchNormalization()
         # TODO: change stride, kernel no, num filters to match our preprocessed output
-        
+
 
     @tf.function
     def call(self, samples):
         # Here's a helpful article for understanding subpixel stuff (https://medium.com/@hirotoschwert/introduction-to-deep-super-resolution-c052d84ce8cf)
-        # Added a bunch of leaky relus! 
+        # Added a bunch of leaky relus!
 
         output = self.batch_norm(self.relu(self.encoder_conv_1(samples))))
         output = self.batch_norm(self.relu(self.encoder_conv_2(output))))
         output = self.batch_norm(self.relu(self.encoder_conv_3(output))))
         return output
-        
+
 
 # Upsampling blocks for bottleneck architecture
 class Decoder(tf.keras.layers.Layer):
     def __init__(self):
-        super(Decoder, self).__init__()  
+        super(Decoder, self).__init__()
 
         # TODO: Figure out what layer to use for upsampling since keras has no Conv1DTranspose
         #   - keras.layers.UpSampling1D (not learnable, see https://stackoverflow.com/questions/53654310/what-is-the-difference-between-upsampling2d-and-conv2dtranspose-functions-in-ker)
@@ -77,21 +77,21 @@ class Model(tf.keras.Model):
         super(Model, self).__init__()
         self.encoder = Encoder()
         self.decoder = Decoder()
-        
+
         self.learning_rate = 10e-4   # Paper uses 10e-4
         self.batch_size = 128        # Batch size=128 vs patch size=6000
         self.epochs = 1              # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
-    
+
     @tf.function
     def call(self, samples):
-       return self.decoder.call(self.encoder.call(samples))
-    
+        return self.decoder.call(self.encoder.call(samples))
+
     @tf.function
     def loss_function(self, encoded, originals):
-      encoded = tf.dtypes.cast(encoded, tf.float32)
-      originals = tf.dtypes.cast(originals, tf.float32)
-      return (1/len(encoded)) * tf.math.sqrt(tf.reduce_sum(tf.math.square(tf.norm(originals - tf.reshape(encoded, originals.shape)))))
+        encoded = tf.dtypes.cast(encoded, tf.float32)
+        originals = tf.dtypes.cast(originals, tf.float32)
+        return (1/len(encoded)) * tf.math.sqrt(tf.reduce_sum(tf.math.square(tf.norm(originals - tf.reshape(encoded, originals.shape)))))
 
 
     # Re-implementation of scipy.stats.signaltonoise which is deprecated :(
