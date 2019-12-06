@@ -44,8 +44,6 @@ def get_data(VCTK=False):
     # TODO: Cubic interpolation so they are all the same size, discretize train and test samples
     upscaled = interpolate.interp1d(range(len(originals)), originals, kind='cubic')
 
-    # ????????????????????/
-
     # Paper implements an 88%-6%-6% split on train, test, validation
     cutoff_index = int(len(originals)*0.88)
 
@@ -55,5 +53,4 @@ def get_data(VCTK=False):
     test_originals =  originals[cutoff_index:]
 
     # 6% should be left for validation, how to validate here?
-
     return train_corrupted, train_originals, test_corrupted, test_originals

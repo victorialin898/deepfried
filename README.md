@@ -6,3 +6,11 @@ In this project we aim to recreate the audio processing technique discussed in A
 
 This problem is a supervised learning problem, due to the methodology. We will be taking audio samples from various data sets (VCTK, Beethoven Sonata Piano) and downsampling them, and training our model to generate upsampled versions. To evaluate our model, we will compare the discretized audio signal predictions to the actual original audio sample, using a mean squared error loss function.
 
+## Getting Started
+
+Make sure to start your pipenv environment through running
+```
+pipenv shell
+```
+
+The dependencies and their versions are all locked in `Pipfile.lock`
