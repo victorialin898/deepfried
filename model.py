@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import scipy
+from tensorflow.keras.layers import LeakyReLU, Conv1D, BatchNormalization, Conv2DTranspose, Dropout
 
 # Downsampling blocks for bottleneck architecture
 class Encoder(tf.keras.layers.Layer):
@@ -15,25 +16,29 @@ class Encoder(tf.keras.layers.Layer):
         #   - number of filters (i.e. output depth) = max(2^(6+b), 512)
         #   - length of filters (remember that it's Conv1D) = min(2^(7-b) + 1, 9)
         #   - stride = 2
-        self.encoder_conv_1 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.encoder_conv_2 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.encoder_conv_3 = tf.keras.layers.Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        
-        self.batch_norm = tf.keras.layers.BatchNormalization()
 
-        self.dropout_rate = 0.5 # From paper, seems kind of high but Ok
-        self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
-       
+
+        # In the paper, the upsampling block (decoder) consists only of a convolution and ReLu
+        self.encoder_conv_1 = Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.encoder_conv_2 = Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.encoder_conv_3 = Conv1D(filters=512, kernel_size=9, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        
+        # keeping alpha at 0.2 for now
+        self.relu = LeakyReLU(alpha=0.2)
+
+
+        self.batch_norm = BatchNormalization()       
         # TODO: change stride, kernel no, num filters to match our preprocessed output
+        
 
     @tf.function
     def call(self, samples):
-        # TODO: we need subpixel shuffling layer here ! each layer has a dimshuffle
         # Here's a helpful article for understanding subpixel stuff (https://medium.com/@hirotoschwert/introduction-to-deep-super-resolution-c052d84ce8cf)
+        # Added a bunch of leaky relus! 
 
-        output = self.batch_norm(self.dropout(self.encoder_conv_1(samples)))
-        output = self.batch_norm(self.dropout(self.encoder_conv_2(output)))
-        output = self.batch_norm(self.dropout(self.encoder_conv_3(output)))
+        output = self.batch_norm(self.relu(self.encoder_conv_1(samples))))
+        output = self.batch_norm(self.relu(self.encoder_conv_2(output))))
+        output = self.batch_norm(self.relu(self.encoder_conv_3(output))))
         return output
         
 
@@ -50,18 +55,19 @@ class Decoder(tf.keras.layers.Layer):
         #   - number of filters (i.e. output depth) = max(2^(7+B-b+1), 512)
         #   - length of filters (remember that it's Conv1D) = min(2^(7-(B-b+1)) + 1, 9)
         #   - stride = ???????
-        self.decoder_deconv_1 = tf.keras.layers.Conv2DTranspose(filters=1024, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_deconv_2 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_deconv_3 = tf.keras.layers.Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-
-        self.batch_norm = tf.keras.layers.BatchNormalization()
+        self.decoder_deconv_1 = Conv2DTranspose(filters=1024, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_2 = Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_deconv_3 = Conv2DTranspose(filters=512, kernel_size=9, strides=2, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.batch_norm = BatchNormalization()
+        self.dropout = Dropout(0.5)
 
     @tf.function
     def call(self, encoder_output):
-        # In the paper, the downsampling block (decoder) consists only of a convolution and ReLu
-        output = self.batch_norm(self.decoder_deconv_1(encoder_output))
-        output = self.batch_norm(self.decoder_deconv_2(output))
-        output = self.batch_norm(self.decoder_deconv_3(output))
+
+        # TODO: we need subpixel shuffling layer here ! each layer has a dimshuffle
+        output = self.dropout(self.batch_norm(self.decoder_deconv_1(encoder_output)))
+        output = self.dropout(self.batch_norm(self.decoder_deconv_2(output)))
+        output = self.dropout(self.batch_norm(self.decoder_deconv_3(output)))
         return output
 
 
