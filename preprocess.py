@@ -34,23 +34,26 @@ def get_data(VCTK=False):
     #librosa loads all of them, saving them as Tuple(<Audio Time Series[np.array], Sampling Rate [float])
     files = {aud: np.array(list(map(librosa.load, search_by_wav_file_type(aud, filepath)))) for aud in audio_type}
 
-    # Retrieve high resolution ones which we will corrupt
-    originals = files['hr']
+    # Retrieve high resolution ones which we will corrupt: array of variable length arrays size (data points ,)
+    originals = np.squeeze(files['hr'][:,:1])
 
-    # Corrupting process: scipy.signal.decimate uses chebyshev of order 8 TODO: this gives padlen errors?
+    # Cubic interpolation so they are all the same size, discretize train and test samples
+    patch_length = 6000
+    upscaled = np.array([interpolate.interp1d(range(len(x)), x, kind='cubic')(np.arange(patch_length) * len(x)/patch_length) for x in originals])
+
+    # Corrupting process: scipy.signal.decimate uses chebyshev of order 8
     downsample_factor = 2
-    corrupted = signal.decimate(originals, downsample_factor)
+    corrupted = signal.decimate(upscaled, downsample_factor, axis=1)
 
-    # TODO: Cubic interpolation so they are all the same size, discretize train and test samples
-    upscaled = interpolate.interp1d(range(len(originals)), originals, kind='cubic')
-
-    # Paper implements an 88%-6%-6% split on train, test, validation
-    cutoff_index = int(len(originals)*0.88)
+    # Paper implements an 88%-6%-6% split on train, test, validation, we will use 90-10 for now
+    cutoff_index = int(len(originals)*0.90)
 
     train_corrupted = corrupted[:cutoff_index]
     train_originals = originals[cutoff_index:]
     test_corrupted = corrupted[:cutoff_index]
     test_originals =  originals[cutoff_index:]
 
-    # 6% should be left for validation, how to validate here?
+    print("Generated %d samples of HR patch length: %d, LR patch length = %d, downsampling factor = %d" %(upscaled.shape[0], upscaled.shape[1], corrupted.shape[1], downsample_factor))
+
+    # Figure out validation
     return train_corrupted, train_originals, test_corrupted, test_originals

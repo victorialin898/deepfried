@@ -58,7 +58,7 @@ def main():
         train_corrupted, train_originals, test_corrupted, test_originals = get_data(VCTK=False)
     print("Preprocessing complete.")
 
-    # model = Model()
+    model = Model()
 
     # print("Beginning training...")
     # for _ in range(model.epochs):
