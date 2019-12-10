@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import scipy
-from tensorflow.keras.layers import LeakyReLU, Conv1D, BatchNormalization, Conv2DTranspose, Dropout
+from tensorflow.keras.layers import LeakyReLU, Conv1D, Conv2D, BatchNormalization, Conv2DTranspose, Dropout
 
 """
     Implements the 1D subpizel shuffle
@@ -16,7 +16,7 @@ def subpixel_shuffle(input):
     input = input.transpose([0, 1, 3, 2])
     input = input.reshape(batch_size, filters / 2, dim*2)
     return input
-    
+
 
 # Downsampling blocks for bottleneck architecture
 class Encoder(tf.keras.layers.Layer):
@@ -78,7 +78,7 @@ class Decoder(tf.keras.layers.Layer):
         self.decoder_conv_2 = Conv2D(filters=1024, kernel_size=17, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
         self.decoder_conv_3 = Conv2D(filters=512, kernel_size=33, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
         self.decoder_conv_4 = Conv2D(filters=256, kernel_size=65, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        
+
         self.batch_norm = BatchNormalization()
         self.dropout = Dropout(0.5)
 
@@ -128,7 +128,7 @@ class Model(tf.keras.Model):
 
         self.learning_rate = 10e-4   # Paper uses 10e-4
         self.batch_size = 128        # Batch size=128 vs patch size=6000
-        self.epochs = 1              # Paper uses 400
+        self.epochs = 10              # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # We need the following two layers, but they don't neatly fall into either the encoder or decoder structure
@@ -138,9 +138,9 @@ class Model(tf.keras.Model):
 
     @tf.function
     def call(self, samples):
-        encoder_out = self.encoder.call(samples))
+        encoder_out = self.encoder.call(samples)
         bottleneck_out = self.dropout(self.bottleneck_conv(encoder_out[-1]))
-        decoder_out = self.decoder.call(bottleneck_out, encoder_out))
+        decoder_out = self.decoder.call(bottleneck_out, encoder_out)
         final_out = samples + subpixel_shuffle(self.final_conv(decoder_out))
 
     @tf.function

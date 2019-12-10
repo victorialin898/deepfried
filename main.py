@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import numpy as np
-from preprocess import get_data
+from preprocess import get_dataset_iterator
 from model import Model
 import sys
 import time
@@ -12,7 +12,9 @@ import soundfile as sf
     Trains model in batches on corrupted and original audio files.
 """
 
-def train(model, corrupted, originals):
+def train(model, train_data_iterator):
+    # TODO: reimplement parts of this using the train_data_iterator
+
     bs = model.batch_size
     for i in range(len(corrupted) // bs):
         batch_corrupted = corrupted[i*bs : (i+1)*bs]
@@ -30,7 +32,8 @@ def train(model, corrupted, originals):
 
     @returns : average loss over input test data, sharpened audio files
 """
-def test(model, corrupted, originals):
+def test(model, test_data_iterator):
+    # TODO: reimplement parts of this using the test_data_iterator
 
     losses = []
     sharpened = []
@@ -56,22 +59,26 @@ def main():
 
     print("Running preprocessing...")
     if sys.argv[1] == "VCTK":
-        train_corrupted, train_originals, test_corrupted, test_originals, demo_sr = get_data(VCTK=True)
+        train_data_iterator, test_data_iterator = get_dataset_iterator(VCTK=True)
     elif sys.argv[1] == "PIANO":
-        train_corrupted, train_originals, test_corrupted, test_originals, demo_sr = get_data(VCTK=False)
-    print("Preprocessing complete.")
-    print(train_corrupted, train_originals)
+        train_data_iterator, test_data_iterator = get_dataset_iterator(VCTK=False)
+    print("Finished reprocessing.")
+    
+    # TODO: remove this loop. this is just to test that our data is the correct shape
+    for iteration, data in enumerate(train_data_iterator):
+        print(iteration, data.shape)
+
 
     model = Model()
 
-    # print("Beginning training...")
-    # for _ in range(model.epochs):
-	#     train(model, train_corrupted, train_originals)
-    # print("Training complete.")
+    print("Beginning training...")
+    for _ in range(model.epochs):
+	    train(model, train_data_iterator)
+    print("Training complete.")
 
-    # print("Beginning testing...")
-    # loss, sharpened = test(model, test_corrupted, test_originals)
-    # print("Average loss: " + loss)
+    print("Beginning testing...")
+    loss, sharpened = test(model, test_data_iterator)
+    print("Average loss: " + str(loss.numpy()))
 
     # Write 20 sharpened files as .wav for demo purposes
     for i in range(len(demo_sr)):

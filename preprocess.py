@@ -4,59 +4,112 @@ from scipy import signal, io, interpolate
 import glob
 import librosa
 
+patch_len = 6000
+scale = 2
 """
     TODO:
         - Using the parameter VCTK, distinguish between which audio files we want to load with librosa.
 """
 
 """
-    Extracts data from .wav files, either VCTK/PIANO, and returns them as audio time serie
+    Extracts data from .wav files, either VCTK/PIANO, and returns them as audio time series
     @param VCTK : whether to to load and return the voice data. If false, loads the piano data.
-    @returns : a tuple of the form (train_corrupted, train_originals, test_corrupted, test_originals, demo_sr)
+    @returns : an iterator each for the train set and the test set
 """
-def get_data(VCTK=False):
-
-    audio_type = ['hr', 'lr', 'pr', 'sp']
-
+def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=True):
+    # TODO: figure out exactly how many training and testing samples we want
     """
-        Helper function for get_data. Using glob, recursively finds all files that
-        match on the input Unix-like regex
+        @param file_path : path to a wav file, string
+        @returns : tensor of audio patches generated from audio, shape=(len(audio) - 6000, 6000)
+        since 6000 is our default patch_len
     """
-    def search_by_wav_file_type(wav, filepath):
-        return glob.glob(filepath%(wav), recursive=True)
+    # @tf.function
+    def extract_patches(file_path):
+        audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
+        audio = tf.squeeze(audio)
 
-    if VCTK:
-        filepath = "./data/vctk/**/*.%s.wav"  # VCTK folder holds 2 sets of data: multispeaker (msp) and single speaker (sp1)
-    else:
-        filepath = "./data/piano/**/*.%s.wav"
+        # add dimensions so that we can treat the audio file like an image
+        audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
 
-    #load all file_paths
-    #librosa loads all of them, saving them as Tuple(<Audio Time Series[np.array], Sampling Rate [float])
-    files = {aud: np.array(list(map(librosa.load, search_by_wav_file_type(aud, filepath)))) for aud in audio_type}
+        # borrow the extract_patches function to create patches. you can think of this
+        # as convolving on a 1d image to create patches
+        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
+        patches = tf.squeeze(patches)
+        return tf.data.Dataset.from_tensor_slices(patches)
 
-    # Retrieve high resolution ones which we will corrupt: array of variable length arrays size (data points ,)
-    originals = np.squeeze(files['hr'][:,:1])
-    demo_sr = np.squeeze(files['hr'][:,1:][:20])
+    # NOTE: you must run download.py first
+    dir_path = './data/VCTK-Corpus/wav48/**/*.wav'
+    dataset = tf.data.Dataset.list_files(dir_path)
 
+    # NOTE: if we want to parallelize this, we have to use dataset.map(), and then flatten after
+    dataset = dataset.flat_map(map_func=extract_patches)
 
-    # Cubic interpolation so they are all the same size, discretize train and test samples
-    patch_length = 6000
-    upscaled = np.array([interpolate.interp1d(range(len(x)), x, kind='cubic')(np.arange(patch_length) * len(x)/patch_length) for x in originals])
+    # need to shuffle again after creating patches
+    dataset = dataset.shuffle(buffer_size=250000)
 
-    # Corrupting process: scipy.signal.decimate uses chebyshev of order 8
-    downsample_factor = 2
-    corrupted = signal.decimate(upscaled, downsample_factor, axis=1)
+    # split dataset in train and test
+    train_dataset = dataset.take(train_size)
+    train_dataset = train_dataset.batch(batch_size, drop_remainder=True)
+    test_dataset = dataset.skip(train_size).take(test_size)
+    test_dataset = test_dataset.batch(batch_size, drop_remainder=True)
 
-    # Paper implements an 88%-6%-6% split on train, test, validation, we will use 90-10 for now
-    cutoff_index = int(len(originals)*0.90)
+    train_dataset = train_dataset.prefetch(1)
+    test_dataset = test_dataset.prefetch(1)
 
-    train_corrupted = corrupted[:cutoff_index]
-    train_originals = originals[cutoff_index:]
-    test_corrupted = corrupted[:cutoff_index]
-    test_originals =  originals[cutoff_index:]
+    return train_dataset, test_dataset
 
-
-    print("Generated %d samples of HR patch length: %d, LR patch length = %d, downsampling factor = %d" %(upscaled.shape[0], upscaled.shape[1], corrupted.shape[1], downsample_factor))
-
-    # Figure out validation
-    return train_corrupted, train_originals, test_corrupted, test_originals, demo_sr
+# ----- old code left below for reference -----
+    # print(dataset)
+    # get list of files
+    # load files into dataset
+    # flat_map a func that takes a audio file outputs a dataset of tuples (hr patch, lr patch)
+    # split dataset into train and test dataset iterators
+    # return both
+    #
+    # audio_type = ['hr', 'lr', 'pr', 'sp']
+    #
+    # """
+    #     Helper function for get_data. Using glob, recursively finds all files that
+    #     match on the input Unix-like regex
+    # """
+    # def search_by_wav_file_type(wav, filepath):
+    #     return glob.glob(filepath%(wav), recursive=True)
+    #
+    # if VCTK:
+    #     filepath = "./data/VCTK-Corpus/wav48/**/*.wav"  # VCTK folder holds 2 sets of data: multispeaker (msp) and single speaker (sp1)
+    # else:
+    #     filepath = "./data/piano/**/*.%s.wav"
+    #
+    # # raise Exception([f for f in glob.glob(filepath)])
+    # #load all file_paths
+    # #librosa loads all of them, saving them as Tuple(<Audio Time Series[np.array], Sampling Rate [float])
+    # # files = {aud: np.array(list(map(librosa.load, search_by_wav_file_type(aud, filepath)))) for aud in audio_type}
+    # # raise Exception(files)
+    # # Retrieve high resolution ones which we will corrupt: array of variable length arrays size (data points ,)
+    # # originals = np.squeeze(files['hr'][:,:1])
+    # # demo_sr = np.squeeze(files['hr'][:,1:][:20])
+    # originals = np.array([librosa.load(f)[0] for f in glob.glob(filepath)])
+    # raise Exception(originals)
+    #
+    # # Cubic interpolation so they are all the same size, discretize train and test samples
+    # patch_length = 6000
+    # upscaled = np.array([interpolate.interp1d(range(len(x)), x, kind='cubic')(np.arange(patch_length) * len(x)/patch_length) for x in originals])
+    #
+    # # Corrupting process: scipy.signal.decimate uses chebyshev of order 8
+    # downsample_factor = 2
+    # corrupted = signal.decimate(upscaled, downsample_factor, axis=1)
+    #
+    # # Paper implements an 88%-6%-6% split on train, test, validation, we will use 90-10 for now
+    # cutoff_index = int(len(originals)*0.90)
+    # # raise Exception(len(originals))
+    #
+    # train_corrupted = corrupted[:cutoff_index]
+    # train_originals = originals[cutoff_index:]
+    # test_corrupted = corrupted[:cutoff_index]
+    # test_originals =  originals[cutoff_index:]
+    #
+    #
+    # print("Generated %d samples of HR patch length: %d, LR patch length = %d, downsampling factor = %d" %(upscaled.shape[0], upscaled.shape[1], corrupted.shape[1], downsample_factor))
+    #
+    # # Figure out validation
+    # return train_corrupted, train_originals, test_corrupted, test_originals, demo_sr
