@@ -7,25 +7,35 @@ from model import Model
 import sys
 import time
 import soundfile as sf
+from scipy.signal import decimate
+from scipy import interpolate
+
+patch_len = 6000
+scale = 2
 
 """
     @param batch : a tensor of (batch_size, 6000)
 """
 def corrupt_batch(batch):
-    pass
+    corrupted = decimate(batch, scale, axis=-2)
+    f = interpolate.interp1d(np.arange(corrupted.shape[1]), corrupted, kind='cubic', axis=-2)
+    upscaled = f(np.arange(0.0, corrupted.shape[1] - 1, (corrupted.shape[1] - 1) / patch_len))
+    return upscaled
 
 """
     Trains model in batches on corrupted and original audio files.
 """
 def train(model, train_data_iterator):
     for iteration, batch in enumerate(train_data_iterator):
+        batch = tf.expand_dims(batch, -1)
         batch_corrupted = corrupt_batch(batch)
+        assert(batch_corrupted.shape == batch.shape)
 
         with tf.GradientTape() as tape:
             batch_sharpened = model.call(batch_corrupted)
             loss = model.loss_function(batch_sharpened, batch)
 
-        gradients = tape.gradient(loss, model.trainable_variables) # Maybe trainable_variables here?
+        gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 """
@@ -60,8 +70,8 @@ def main():
     print("Finished reprocessing.")
 
     # TODO: remove this loop. this is just to test that our data is the correct shape
-    for iteration, data in enumerate(train_data_iterator):
-        print(iteration, data.shape)
+    # for iteration, data in enumerate(train_data_iterator):
+    #     print(iteration, data.shape)
 
     print("Beginning training...")
     for _ in range(model.epochs):
