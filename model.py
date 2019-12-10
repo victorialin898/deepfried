@@ -42,7 +42,10 @@ class Encoder(tf.keras.layers.Layer):
         # keeping alpha at 0.2 for now
         # self.relu = LeakyReLU(alpha=0.2)
         # Since dropout and relu all commute, we can use the builtin activation to Conv1d layers i
-        self.batch_norm = BatchNormalization()
+        self.batch_norm_1 = BatchNormalization()
+        self.batch_norm_2 = BatchNormalization()
+        self.batch_norm_3 = BatchNormalization()
+        self.batch_norm_4 = BatchNormalization()
 
     """
         Function that returns a list of all the outputs of each encoder block, not just the last encoder block
@@ -54,10 +57,10 @@ class Encoder(tf.keras.layers.Layer):
     def call(self, samples):
         # Here's a helpful article for understanding subpixel stuff (https://medium.com/@hirotoschwert/introduction-to-deep-super-resolution-c052d84ce8cf)
 
-        output_1 = self.batch_norm(self.encoder_conv_1(samples))
-        output_2 = self.batch_norm(self.encoder_conv_2(output_1))
-        output_3 = self.batch_norm(self.encoder_conv_3(output_2))
-        output_4 = self.batch_norm(self.encoder_conv_4(output_3))
+        output_1 = self.batch_norm_1(self.encoder_conv_1(samples))
+        output_2 = self.batch_norm_2(self.encoder_conv_2(output_1))
+        output_3 = self.batch_norm_3(self.encoder_conv_3(output_2))
+        output_4 = self.batch_norm_4(self.encoder_conv_4(output_3))
         return [output_1, output_2, output_3, output_4]
 
 
@@ -74,12 +77,15 @@ class Decoder(tf.keras.layers.Layer):
         #   - number of filters (i.e. output depth) = min(2^(7+B-b+1), 512)
         #   - length of filters (remember that it's Conv1D) = max(2^(7-(B-b+1)) + 1, 9)
         #   - stride = 1 so that the feature dimension is not reduced by Conv1d
-        self.decoder_conv_1 = Conv2D(filters=1024, kernel_size=9, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_conv_2 = Conv2D(filters=1024, kernel_size=17, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_conv_3 = Conv2D(filters=512, kernel_size=33, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
-        self.decoder_conv_4 = Conv2D(filters=256, kernel_size=65, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_conv_1 = Conv1D(filters=1024, kernel_size=9, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_conv_2 = Conv1D(filters=1024, kernel_size=17, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_conv_3 = Conv1D(filters=512, kernel_size=33, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
+        self.decoder_conv_4 = Conv1D(filters=256, kernel_size=65, strides=1, padding='same', activation='relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
 
-        self.batch_norm = BatchNormalization()
+        self.batch_norm_1 = BatchNormalization()
+        self.batch_norm_2 = BatchNormalization()
+        self.batch_norm_3 = BatchNormalization()
+        self.batch_norm_4 = BatchNormalization()
         self.dropout = Dropout(0.5)
 
     """
@@ -98,21 +104,21 @@ class Decoder(tf.keras.layers.Layer):
         # are of the form (batch_size, num_features, feature_length)
 
         # shape (batch_size, 512, 1875) --> shape (batch_size, 1024, 1875)
-        output = self.dropout(self.batch_norm(self.decoder_conv_1(bottleneck_output)))
+        output = self.dropout(self.batch_norm_1(self.decoder_conv_1(bottleneck_output)))
         # shape (batch_size, 1024, 1875) --> shape (batch_size, 512, 3750)
         output = subpixel_shuffle(output)
         # shape (batch_size, 512, 3750) --> shape (batch_size, 1024, 3750)
         output = tf.concat([output, encoder_output[3]], axis=1)
 
-        output = self.dropout(self.batch_norm(self.decoder_conv_2(output)))
+        output = self.dropout(self.batch_norm_2(self.decoder_conv_2(output)))
         output = subpixel_shuffle(output)
         output = tf.concat([output, encoder_output[2]], axis=1)
 
-        output = self.dropout(self.batch_norm(self.decoder_conv_3(output)))
+        output = self.dropout(self.batch_norm_3(self.decoder_conv_3(output)))
         output = subpixel_shuffle(output)
         output = tf.concat([output, encoder_output[1]], axis=1)
 
-        output = self.dropout(self.batch_norm(self.decoder_conv_4(output)))
+        output = self.dropout(self.batch_norm_4(self.decoder_conv_4(output)))
         output = subpixel_shuffle(output)
         output = tf.concat([output, encoder_output[0]], axis=1)
 
