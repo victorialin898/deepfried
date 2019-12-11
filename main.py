@@ -61,23 +61,18 @@ def test(model, test_data_iterator):
 
     return tf.reduce_mean(losses), tf.reduce_mean(accuracies)
 
-def test_demo(model, n_demos=10):
-    demos = get_demos()
+def test_demo(model, demos_data_iterator):
+    demos_data_iterator = get_demos()
 
-    batch = demos[0]
-    srs = demos[1]
+    for iteration, b in enumerate(demos_data_iterator):
+        batch, sr = b[0], b[1]
+        batch = tf.expand_dims(batch, -1)
+        batch_corrupted = corrupt_batch(batch)
+        batch_sharpened = model.call(batch_corrupted)
 
-    batch = tf.expand_dims(batch, -1)
-    batch_corrupted = corrupt_batch(batch)
-    batch_sharpened = model.call(batch_corrupted)
-
-    for i in range(len(demos)):
-        sf.write(file=os.path.join('output/', str(i + 1)+'_hr.wav'), data=batch[i][0], samplerate=srs[i])
-        sf.write(file=os.path.join('output/', str(i + 1)+'_lr.wav'), data=batch_corrupted[i][0], samplerate=srs[i])
-        sf.write(file=os.path.join('output/', str(i + 1)+'_pr.wav'), data=batch_sharpened[i][0], samplerate=srs[i])
-
-
-
+        sf.write(file=os.path.join('output/', str(i + 1)+'_hr.wav'), data=batch, samplerate=sr)
+        sf.write(file=os.path.join('output/', str(i + 1)+'_lr.wav'), data=batch_corrupted, samplerate=sr)
+        sf.write(file=os.path.join('output/', str(i + 1)+'_pr.wav'), data=batch_sharpened, samplerate=sr)
 
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:

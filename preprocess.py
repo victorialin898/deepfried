@@ -58,24 +58,31 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 
     return train_dataset, test_dataset
 
-def get_demos(num_demo=10):
+def get_demos(num_demo=10, train_size=8000):
     def get_samples(file_path):
         audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
         audio = tf.squeeze(audio)
 
-        # # add dimensions so that we can treat the audio file like an image
-        # audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
-        # patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
-        # patches = tf.squeeze(patches)
+        # add dimensions so that we can treat the audio file like an image
+        audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
 
-        return (audio, sr)
+        # borrow the extract_patches function to create patches. you can think of this
+        # as convolving on a 1d image to create patches
+        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
+        patches = tf.squeeze(patches)
+
+        # NEED TO RETURN SR HERE TOO
+        return tf.data.Dataset([tf.data.Dataset.from_tensor_slices(patches), sr])
 
     dir_path = './data/VCTK-Corpus/wav48/**/*.wav'
-    demos = tf.data.Dataset.list_files(dir_path) [:num_demo]
+    demos = tf.data.Dataset.list_files(dir_path)
     demos = demos.flat_map(map_func=get_samples)
 
-    print(demos.shape)
-    return demos
+    # Take one batch of 10 examples
+    demos_data = demos.take(num_demo)
+    demos_data = demos_data.batch(1, drop_remainder=True)
+
+    return demos_data
 
 
 def get_stft(signal, n_fft):
