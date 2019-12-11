@@ -35,7 +35,12 @@ def train(model, train_data_iterator):
             batch_sharpened = model.call(batch_corrupted)
             loss = model.loss_function(batch_sharpened, batch)
             accuracy = model.snr_function(batch_sharpened, batch)
-            #lsd = model.lsd(batch_sharpened, batch)
+
+            print('HSAPES')
+            print(batch_sharpened.shape, batch.shape)
+
+            lsd = model.lsd(batch_sharpened, batch)
+            print(lsd)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -67,18 +72,21 @@ def test_demo(model):
     for iteration, b in enumerate(demos_data_iterator):
         batch, sr = b[0], b[1]
         print("TEST DMEOMEOMDOEMDEMODMOEDMOEMOE")
-        print(batch)
+        print(batch.shape)
         print(sr)
         batch = tf.expand_dims(batch, -1)
         batch_corrupted = corrupt_batch(batch)
         batch_sharpened = model.call(batch_corrupted)
+        print(batch_sharpened.shape)
+
+        print(model.lsd(batch_sharpened, batch))
 
         print(iteration)
 
-        sf.write(file=os.path.join('output/', str(iteration + 1)+'_hr.wav'), data=batch[0], samplerate=sr)
-        sf.write(file=os.path.join('output/', str(iteration + 1)+'_lr.wav'), data=batch_corrupted[0], samplerate=sr)
-        sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
-
+        #sf.write(file=os.path.join('output/', str(iteration + 1)+'_hr.wav'), data=batch[0], samplerate=sr)
+        #sf.write(file=os.path.join('output/', str(iteration + 1)+'_lr.wav'), data=batch_corrupted[0], samplerate=sr)
+        #sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
+#
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
         print("USAGE: python assignment.py <Data Set>")
@@ -98,17 +106,19 @@ def main():
     # for iteration, data in enumerate(train_data_iterator):
     #     print(iteration, data.shape)
 
-    # print("Beginning training...")
-    # for _ in range(model.epochs):
-	#     train(model, train_data_iterator)
-    # print("Training complete.")
+    #test_demo(model)
+    print('test data due')
 
-    # print("Beginning testing...")
-    # loss, accuracy = test(model, test_data_iterator)
-    # print("Average loss: " + str(loss.numpy()))
-    # print("Average accuracy (SNR): " + str(accuracy.numpy()))
+    print("Beginning training...")
+    for _ in range(model.epochs):
+        train(model, train_data_iterator)
+    print("Training complete.")
 
-    test_demo(model)
+    print("Beginning testing...")
+    loss, accuracy = test(model, test_data_iterator)
+    print("Average loss: " + str(loss.numpy()))
+    print("Average accuracy (SNR): " + str(accuracy.numpy()))
+
 
 
 if __name__ == '__main__':
