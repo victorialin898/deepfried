@@ -35,6 +35,7 @@ def train(model, train_data_iterator):
             batch_sharpened = model.call(batch_corrupted)
             loss = model.loss_function(batch_sharpened, batch)
             accuracy = model.snr_function(batch_sharpened, batch)
+            lsd = model.lsd(batch_sharpened, batch)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
