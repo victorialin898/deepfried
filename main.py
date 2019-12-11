@@ -37,7 +37,12 @@ def train(model, train_data_iterator):
             batch_sharpened = model.call(batch_corrupted)
             loss = model.loss_function(batch_sharpened, batch)
             accuracy = model.snr_function(batch_sharpened, batch)
-            #lsd = model.lsd(batch_sharpened, batch)
+
+            print('HSAPES')
+            print(batch_sharpened.shape, batch.shape)
+
+            lsd = model.lsd(batch_sharpened, batch)
+            print(lsd)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -51,6 +56,7 @@ def train(model, train_data_iterator):
 def test(model, test_data_iterator):
     losses = []
     accuracies = []
+    lsds = []
 
     for iteration, batch in enumerate(test_data_iterator):
         batch = tf.expand_dims(batch, -1)
@@ -60,8 +66,9 @@ def test(model, test_data_iterator):
         accuracy = model.snr_function(batch_sharpened, batch)
         losses.append(loss)
         accuracies.append(accuracy)
+        lsds.append(model.lsd(batch_sharpened, batch))
 
-    return tf.reduce_mean(losses), tf.reduce_mean(accuracies)
+    return tf.reduce_mean(losses), tf.reduce_mean(accuracies), tf.reduce_mean(lsds)
 
 def test_demo(model):
     demos_data_iterator = get_demos()
@@ -71,18 +78,17 @@ def test_demo(model):
         print("TEST DMEOMEOMDOEMDEMODMOEDMOEMOE")
         print(batch.shape)
         print(sr.numpy())
+        print(sr)
         batch = tf.expand_dims(batch, -1)
         print("starting to corrupt")
         batch_corrupted = corrupt_batch(batch)
         print("starting to sharpen")
         batch_sharpened = model.call(batch_corrupted)
-
-        print(iteration)
-
-        sf.write(file=os.path.join('output/', str(iteration + 1)+'_hr.wav'), data=batch[0], samplerate=sr)
-        sf.write(file=os.path.join('output/', str(iteration + 1)+'_lr.wav'), data=batch_corrupted[0], samplerate=sr)
-        sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
-
+    
+        #sf.write(file=os.path.join('output/', str(iteration + 1)+'_hr.wav'), data=batch[0], samplerate=sr)
+        #sf.write(file=os.path.join('output/', str(iteration + 1)+'_lr.wav'), data=batch_corrupted[0], samplerate=sr)
+        #sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
+#
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
         print("USAGE: python assignment.py <Data Set>")
@@ -102,17 +108,20 @@ def main():
     # for iteration, data in enumerate(train_data_iterator):
     #     print(iteration, data.shape)
 
-    # print("Beginning training...")
-    # for _ in range(model.epochs):
-	#     train(model, train_data_iterator)
-    # print("Training complete.")
+    #test_demo(model)
+    print('test data due')
 
-    # print("Beginning testing...")
-    # loss, accuracy = test(model, test_data_iterator)
-    # print("Average loss: " + str(loss.numpy()))
-    # print("Average accuracy (SNR): " + str(accuracy.numpy()))
+    print("Beginning training...")
+    for _ in range(model.epochs):
+        train(model, train_data_iterator)
+    print("Training complete.")
 
-    test_demo(model)
+    print("Beginning testing...")
+    loss, accuracy, lsds = test(model, test_data_iterator)
+    print("Average loss: " + str(loss.numpy()))
+    print("Average accuracy (SNR): " + str(accuracy.numpy()))
+    print("Average accuracy (LSD): " + str(lsds.numpy()))
+
 
 
 if __name__ == '__main__':

@@ -1,9 +1,11 @@
 import tensorflow as tf
+import os
+import librosa
 import numpy as np
 import scipy
 from tensorflow.keras.layers import LeakyReLU, Conv1D, Conv2D, BatchNormalization, Conv2DTranspose, Dropout
 from preprocess import get_stft, amplitude_to_decibel
-
+import matplotlib
 from matplotlib import pyplot as plt
 
 """
@@ -155,26 +157,24 @@ class Model(tf.keras.Model):
         std = tf.square(scipy.linalg.norm(originals-encoded, axis=1))
         snrs = np.where(std==0, 0, 10* tf.math.log(mean/std))
         return tf.reduce_mean(snrs)
-        
-        # signal = tf.math.sqrt(tf.reduce_mean(f.square(originals), axis=1))
-        # noise = tf.math.sqrt(tf.reduce_mean(tf.square(originals - encoded) + 1e-6, axis=1))
-        # snr = 20 * tf.math.log(signal / noise + 1e-8) / tf.math.log(10.0)
-        # return tf.reduce_mean(snr)
 
-    def lsd(self, encoded, originals, n_fft=2048):
-        S_y = get_stft(np.array(tf.squeeze(originals)), n_fft)
-        S_x = get_stft(np.array(tf.squeeze(encoded)), n_fft)
+    def lsd(self, encoded, originals, n_fft=2048, step=10):
+        S_y = tf.signal.stft(np.array(tf.squeeze(originals)), n_fft, step)
+        S_x = tf.signal.stft(np.array(tf.squeeze(encoded)), n_fft, step)
         logspec_y = tf.square(np.log1p(tf.abs(S_y)))
         logspec_x = tf.square(np.log1p(tf.abs(S_x)))
         squared_diff = tf.square(logspec_y - logspec_x)
 
-        print("saving plots now")
+        # Use for non display variable
+        if os.environ.get('DISPLAY','') == '':
+            print('no display found. Using non-interactive Agg backend')
+            matplotlib.use('Agg')
 
-        plt.imshow(logspec_y.T, aspect=10)
+        plt.imshow(logspec_y.numpy().T, aspect=10)
         plt.tight_layout()
         plt.savefig('original_spectrum.png')  
 
-        plt.imshow(logspec_x.T, aspect=10)
+        plt.imshow(logspec_x.numpy().T, aspect=10)
         plt.tight_layout()
         plt.savefig('predicted_spectrum.png')  
 
