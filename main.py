@@ -48,14 +48,18 @@ def train(model, train_data_iterator):
 """
 def test(model, test_data_iterator):
     losses = []
+    accuracies = []
 
     for iteration, batch in enumerate(test_data_iterator):
+        batch = tf.expand_dims(batch, -1)
         batch_corrupted = corrupt_batch(batch)
         batch_sharpened = model.call(batch_corrupted)
         loss = model.loss_function(batch_sharpened, batch)
+        accuracy = model.snr_function(batch_sharpened, batch)
         losses.append(loss)
+        accuracies.append(accuracy)
 
-    return tf.reduce_mean(losses)
+    return tf.reduce_mean(losses), tf.reduce_mean(accuracies)
 
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
@@ -76,14 +80,15 @@ def main():
     # for iteration, data in enumerate(train_data_iterator):
     #     print(iteration, data.shape)
 
-    print("Beginning training...")
-    for _ in range(model.epochs):
-	    train(model, train_data_iterator)
-    print("Training complete.")
+    # print("Beginning training...")
+    # for _ in range(model.epochs):
+	#     train(model, train_data_iterator)
+    # print("Training complete.")
 
     print("Beginning testing...")
-    loss = test(model, test_data_iterator)
+    loss, accuracy = test(model, test_data_iterator)
     print("Average loss: " + str(loss.numpy()))
+    print("Average accuracy (SNR): " + str(accuracy.numpy()))
 
     # TODO: figure out a way to write some files to disk as demo
     # below is an attempt but probably doesn't work
