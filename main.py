@@ -52,7 +52,7 @@ def test(model, test_data_iterator):
     for iteration, batch in enumerate(test_data_iterator):
         batch_corrupted = corrupt_batch(batch)
         batch_sharpened = model.call(batch_corrupted)
-        loss = model.loss_function(batch_sharpened, batch_originals)
+        loss = model.loss_function(batch_sharpened, batch)
         losses.append(loss)
 
     return tf.reduce_mean(losses)

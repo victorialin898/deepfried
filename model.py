@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import scipy
 from tensorflow.keras.layers import LeakyReLU, Conv1D, Conv2D, BatchNormalization, Conv2DTranspose, Dropout
-from preprocess import get_stft
+from preprocess import get_stft, amplitude_to_decibel
 
 """
     Implements the 1D subpizel shuffle
@@ -146,17 +146,24 @@ class Model(tf.keras.Model):
     # Re-implementation of scipy.stats.signaltonoise which is deprecated :(
     def snr_function(self, encoded, originals):
         # Using equation for "SNR Calculation - Complicated" from sciencing.com
-        encoded, originals = tf.squeeze(1.0+encoded), tf.squeeze(1.0+originals)
-        signal = tf.math.sqrt(tf.reduce_mean(tf.square(originals), axis=1))
-        noise = tf.math.sqrt(tf.reduce_mean(tf.square(originals - encoded) + 1e-6, axis=1))
-        snr = 20 * tf.math.log(signal / noise + 1e-8) / tf.math.log(10.0)
-        return tf.reduce_mean(snr)
+
+        # CONVERTING TO DECIBELS FIRST:
+        encoded, originals = amplitude_to_decibel(tf.squeeze(1.0+encoded)), amplitude_to_decibel(tf.squeeze(1.0+originals))
+        mean = tf.reduce_mean(originals, axis=1)
+        std = tf.reduce_std(originals-encoded + 1e-6, axis=1)
+        snrs = np.where(std==0, 0, mean/std)
+        return tf.reduce_mean(snrs)
+        
+        # signal = tf.math.sqrt(tf.reduce_mean(tf.square(originals), axis=1))
+        # noise = tf.math.sqrt(tf.reduce_mean(tf.square(originals - encoded) + 1e-6, axis=1))
+        # snr = 20 * tf.math.log(signal / noise + 1e-8) / tf.math.log(10.0)
+        # return tf.reduce_mean(snr)
 
     def lsd(self, encoded, originals, n_fft=2048):
         S_y = get_stft(np.array(originals), n_fft)
         S_x = get_stft(np.array(encoded), n_fft)
-        logspec_y = tf.square(tf.math.log(tf.abs(S_y)))
-        logspec_x = tf.square(tf.math.log(tf.abs(S_y)))
+        logspec_y = tf.square(np.log1p(tf.abs(S_y)))
+        logspec_x = tf.square(np.log1p(tf.abs(S_y)))
         squared_diff = tf.square(logspec_y - logspec_x)
         return tf.reduce_mean(tf.math.sqrt())
 

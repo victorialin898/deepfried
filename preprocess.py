@@ -61,6 +61,9 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 def get_stft(signal, n_fft):
     return librosa.stft(signal, n_fft)
 
+def amplitude_to_decibel(signal):
+    return librosa.core.amplitude_to_db(signal)
+
 # ----- old code left below for reference -----
     # print(dataset)
     # get list of files
