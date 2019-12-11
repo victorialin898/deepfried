@@ -14,3 +14,14 @@ pipenv shell
 ```
 
 The dependencies and their versions are all locked in `Pipfile.lock`
+
+
+## How to run
+
+Due to the size of the dataset, we recommend you train this program using the Google Cloud Platform.
+
+* Clone the github repo: `git clone https://github.com/victorialin898/deepfried.git`
+* We used the cs142 env: `source /home/cs147/cs147_venv/bin/activate`
+* You may need to download librosa: `pip3 install librosa`
+* To download the VLTK dataset: within the root directory `deepfried/`, from your command line `cd data` to move into the data directory, and run `python3 download.py`. The VLTK corpus will begin downloading. Once the download bar reaches 100% the dataset will be located in the dataset folder.
+* Run the program: `cd ..` and `python3 main.py VLTK`.
