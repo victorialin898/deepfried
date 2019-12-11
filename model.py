@@ -153,8 +153,8 @@ class Model(tf.keras.Model):
         return tf.reduce_mean(snr)
 
     def lsd(self, encoded, originals, n_fft=2048):
-        S_y = get_stft(originals, n_fft)
-        S_x = get_stft(encoded, n_fft)
+        S_y = get_stft(np.array(originals), n_fft)
+        S_x = get_stft(np.array(encoded), n_fft)
         logspec_y = tf.square(tf.math.log(tf.abs(S_y)))
         logspec_x = tf.square(tf.math.log(tf.abs(S_y)))
         squared_diff = tf.square(logspec_y - logspec_x)
