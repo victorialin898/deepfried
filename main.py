@@ -90,10 +90,10 @@ def main():
     # print("Average loss: " + str(loss.numpy()))
     # print("Average accuracy (SNR): " + str(accuracy.numpy()))
 
-    demos = get_demos().numpy()
+    demos = get_demos()
 
     for i in range(len(demos)):
-        sf.write(file=os.path.join('output/', str(i + 1)+'.wav'), data=demos[0][i][0], samplerate=demos[1][i])
+        sf.write(file=os.path.join('output/', str(i + 1)+'.wav'), data=demos[i][0], samplerate=demos[1][i])
 
 
     # TODO: figure out a way to write some files to disk as demo
