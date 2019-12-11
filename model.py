@@ -120,7 +120,7 @@ class Model(tf.keras.Model):
 
         self.learning_rate = 10e-4   # Paper uses 10e-4
         self.batch_size = 128        # Batch size=128 vs patch size=6000
-        self.epochs = 10              # Paper uses 400
+        self.epochs = 1              # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # We need the following two layers, but they don't neatly fall into either the encoder or decoder structure
@@ -148,10 +148,10 @@ class Model(tf.keras.Model):
         # Using equation for "SNR Calculation - Complicated" from sciencing.com
 
         # CONVERTING TO DECIBELS FIRST:
-        encoded, originals = amplitude_to_decibel(tf.squeeze(1.0+encoded)), amplitude_to_decibel(tf.squeeze(1.0+originals))
-        mean = tf.reduce_mean(originals, axis=1)
-        std = tf.reduce_std(originals-encoded + 1e-6, axis=1)
-        snrs = np.where(std==0, 0, mean/std)
+        encoded, originals = amplitude_to_decibel(tf.squeeze(encoded)), amplitude_to_decibel(tf.squeeze(originals))
+        mean = tf.square(scipy.linalg.norm(originals, axis=1))
+        std = tf.square(scipy.linalg.norm(originals-encoded, axis=1))
+        snrs = np.where(std==0, 0, 10* tf.math.log(mean/std))
         return tf.reduce_mean(snrs)
         
         # signal = tf.math.sqrt(tf.reduce_mean(tf.square(originals), axis=1))
@@ -160,8 +160,8 @@ class Model(tf.keras.Model):
         # return tf.reduce_mean(snr)
 
     def lsd(self, encoded, originals, n_fft=2048):
-        S_y = get_stft(np.array(originals), n_fft)
-        S_x = get_stft(np.array(encoded), n_fft)
+        S_y = get_stft(np.array(tf.squeeze(originals)), n_fft)
+        S_x = get_stft(np.array(tf.squeeze(encoded)), n_fft)
         logspec_y = tf.square(np.log1p(tf.abs(S_y)))
         logspec_x = tf.square(np.log1p(tf.abs(S_y)))
         squared_diff = tf.square(logspec_y - logspec_x)
