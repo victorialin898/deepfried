@@ -156,7 +156,7 @@ class Model(tf.keras.Model):
         snrs = np.where(std==0, 0, 10* tf.math.log(mean/std))
         return tf.reduce_mean(snrs)
         
-        # signal = tf.math.sqrt(tf.reduce_mean(tf.square(originals), axis=1))
+        # signal = tf.math.sqrt(tf.reduce_mean(f.square(originals), axis=1))
         # noise = tf.math.sqrt(tf.reduce_mean(tf.square(originals - encoded) + 1e-6, axis=1))
         # snr = 20 * tf.math.log(signal / noise + 1e-8) / tf.math.log(10.0)
         # return tf.reduce_mean(snr)
