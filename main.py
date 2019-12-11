@@ -34,9 +34,11 @@ def train(model, train_data_iterator):
         with tf.GradientTape() as tape:
             batch_sharpened = model.call(batch_corrupted)
             loss = model.loss_function(batch_sharpened, batch)
+            accuracy = model.snr_function(batch_sharpened, batch)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        print("BATCH %d LOSS %f SNR %f"%(iteration, loss, accuracy))
 
 """
     Tests model in batches on corrupted and original audio files.
