@@ -3,7 +3,6 @@ import tensorflow as tf
 from scipy import signal, io, interpolate
 import glob
 import librosa
-import os
 
 patch_len = 6000
 scale = 2
@@ -59,7 +58,7 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 
     return train_dataset, test_dataset
 
-def get_demos(num_demo=10, train_size=8000):
+def get_demos(num_demo=10):
     def get_samples(file_path):
         audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
         audio = tf.squeeze(audio)
@@ -69,12 +68,13 @@ def get_demos(num_demo=10, train_size=8000):
         # patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
         # patches = tf.squeeze(patches)
 
-        return (audio, sr.numpy())
-    dir_path = './data/VCTK-Corpus/wav48/p360/'
-    #demos = tf.data.Dataset.list_files(dir_path)
-    files = os.listdir(dir_path)[-num_demo:]
-    demos = [get_samples(dir_path + f) for f in files]
-    print(demos)
+        return (audio, sr)
+
+    dir_path = './data/VCTK-Corpus/wav48/**/*.wav'
+    demos = tf.data.Dataset.list_files(dir_path) [:num_demo]
+    demos = demos.flat_map(map_func=get_samples)
+
+    print(demos.shape)
     return demos
 
 

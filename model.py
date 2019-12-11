@@ -4,6 +4,8 @@ import scipy
 from tensorflow.keras.layers import LeakyReLU, Conv1D, Conv2D, BatchNormalization, Conv2DTranspose, Dropout
 from preprocess import get_stft, amplitude_to_decibel
 
+from matplotlib import pyplot as plt
+
 """
     Implements the 1D subpizel shuffle
 
@@ -163,8 +165,19 @@ class Model(tf.keras.Model):
         S_y = get_stft(np.array(tf.squeeze(originals)), n_fft)
         S_x = get_stft(np.array(tf.squeeze(encoded)), n_fft)
         logspec_y = tf.square(np.log1p(tf.abs(S_y)))
-        logspec_x = tf.square(np.log1p(tf.abs(S_y)))
+        logspec_x = tf.square(np.log1p(tf.abs(S_x)))
         squared_diff = tf.square(logspec_y - logspec_x)
-        return tf.reduce_mean(tf.math.sqrt())
+
+        print("saving plots now")
+
+        plt.imshow(logspec_y.T, aspect=10)
+        plt.tight_layout()
+        plt.savefig('original_spectrum.png')  
+
+        plt.imshow(logspec_x.T, aspect=10)
+        plt.tight_layout()
+        plt.savefig('predicted_spectrum.png')  
+
+        return tf.reduce_mean(tf.math.sqrt(squared_diff))
 
 # TODO: Reverse data preprocessing to turn the output of our model into a listenable .wav file?

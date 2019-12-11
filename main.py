@@ -61,6 +61,24 @@ def test(model, test_data_iterator):
 
     return tf.reduce_mean(losses), tf.reduce_mean(accuracies)
 
+def test_demo(model, n_demos=10):
+    demos = get_demos()
+
+    batch = demos[0]
+    srs = demos[1]
+
+    batch = tf.expand_dims(batch, -1)
+    batch_corrupted = corrupt_batch(batch)
+    batch_sharpened = model.call(batch_corrupted)
+
+    for i in range(len(demos)):
+        sf.write(file=os.path.join('output/', str(i + 1)+'_hr.wav'), data=batch[i][0], samplerate=srs[i])
+        sf.write(file=os.path.join('output/', str(i + 1)+'_lr.wav'), data=batch_corrupted[i][0], samplerate=srs[i])
+        sf.write(file=os.path.join('output/', str(i + 1)+'_pr.wav'), data=batch_sharpened[i][0], samplerate=srs[i])
+
+
+
+
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
         print("USAGE: python assignment.py <Data Set>")
@@ -90,17 +108,7 @@ def main():
     # print("Average loss: " + str(loss.numpy()))
     # print("Average accuracy (SNR): " + str(accuracy.numpy()))
 
-    demos = get_demos()
-
-    for i in range(len(demos)):
-        sf.write(file=os.path.join('output/', str(i + 1)+'.wav'), data=demos[i][0], samplerate=demos[1][i])
-
-
-    # TODO: figure out a way to write some files to disk as demo
-    # below is an attempt but probably doesn't work
-    # Write 20 sharpened files as .wav for demo purposes
-    # for i in range(len(demo_sr)):
-    #     sf.write(file=os.path.join('output', str(i + 1)+'.wav'), data=sharpened, samplerate=demo_sr[i])
+    test_demo(model)
 
 
 if __name__ == '__main__':
