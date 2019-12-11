@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import numpy as np
-from preprocess import get_dataset_iterator
+from preprocess import get_dataset_iterator, get_demos
 from model import Model
 import sys
 import time
@@ -85,10 +85,16 @@ def main():
 	#     train(model, train_data_iterator)
     # print("Training complete.")
 
-    print("Beginning testing...")
-    loss, accuracy = test(model, test_data_iterator)
-    print("Average loss: " + str(loss.numpy()))
-    print("Average accuracy (SNR): " + str(accuracy.numpy()))
+    # print("Beginning testing...")
+    # loss, accuracy = test(model, test_data_iterator)
+    # print("Average loss: " + str(loss.numpy()))
+    # print("Average accuracy (SNR): " + str(accuracy.numpy()))
+
+    demos = get_demos().numpy()
+
+    for i in range(len(demos)):
+        sf.write(file=os.path.join('output/', str(i + 1)+'.wav'), data=demos[0][i][0], samplerate=demos[1][i])
+
 
     # TODO: figure out a way to write some files to disk as demo
     # below is an attempt but probably doesn't work

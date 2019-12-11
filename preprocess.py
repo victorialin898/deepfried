@@ -58,6 +58,26 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 
     return train_dataset, test_dataset
 
+def get_demos(num_demo=10):
+    def get_samples(file_path):
+        audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
+        audio = tf.squeeze(audio)
+
+        # add dimensions so that we can treat the audio file like an image
+        audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
+        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
+        patches = tf.squeeze(patches)
+
+        return (tf.data.Dataset.from_tensor_slices(patches), sr)
+
+    dir_path = './data/VCTK-Corpus/wav48/**/*.wav'
+    demos = tf.data.Dataset.list_files(dir_path) [:num_demo]
+    demos = demos.flat_map(map_func=get_samples)
+
+    print(demos.shape)
+    return demos
+
+
 def get_stft(signal, n_fft):
     return librosa.stft(signal, n_fft)
 
