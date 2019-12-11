@@ -70,9 +70,11 @@ def test_demo(model, demos_data_iterator):
         batch_corrupted = corrupt_batch(batch)
         batch_sharpened = model.call(batch_corrupted)
 
-        sf.write(file=os.path.join('output/', str(i + 1)+'_hr.wav'), data=batch, samplerate=sr)
-        sf.write(file=os.path.join('output/', str(i + 1)+'_lr.wav'), data=batch_corrupted, samplerate=sr)
-        sf.write(file=os.path.join('output/', str(i + 1)+'_pr.wav'), data=batch_sharpened, samplerate=sr)
+        print(iteration)
+
+        sf.write(file=os.path.join('output/', str(iteration + 1)+'_hr.wav'), data=batch[0], samplerate=sr)
+        sf.write(file=os.path.join('output/', str(iteration + 1)+'_lr.wav'), data=batch_corrupted[0], samplerate=sr)
+        sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
 
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
