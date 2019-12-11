@@ -18,7 +18,9 @@ scale = 2
 """
 def corrupt_batch(batch):
     corrupted = decimate(batch, scale, axis=-2)
+    print("decimated")
     f = interpolate.interp1d(np.arange(corrupted.shape[1]), corrupted, kind='cubic', axis=-2)
+    print("interpolated")
     upscaled = f(np.arange(0.0, corrupted.shape[1] - 1, (corrupted.shape[1] - 1) /batch.shape[1]))
     return upscaled
 
@@ -67,10 +69,12 @@ def test_demo(model):
     for iteration, b in enumerate(demos_data_iterator):
         batch, sr = b[0], b[1]
         print("TEST DMEOMEOMDOEMDEMODMOEDMOEMOE")
-        print(batch)
-        print(sr)
+        print(batch.shape)
+        print(sr.numpy())
         batch = tf.expand_dims(batch, -1)
+        print("starting to corrupt")
         batch_corrupted = corrupt_batch(batch)
+        print("starting to sharpen")
         batch_sharpened = model.call(batch_corrupted)
 
         print(iteration)

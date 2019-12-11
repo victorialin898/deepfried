@@ -5,7 +5,7 @@ import glob
 import librosa
 
 patch_len = 6000
-demo_len = 6000
+demo_len =  96000
 scale = 2
 """
     TODO:
@@ -59,7 +59,7 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 
     return train_dataset, test_dataset
 
-def get_demos(num_demo=2, train_size=8000):
+def get_demos(num_demo=1, train_size=8000):
     def get_samples(file_path):
         audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
         audio = tf.squeeze(audio)
@@ -69,7 +69,10 @@ def get_demos(num_demo=2, train_size=8000):
 
         # borrow the extract_patches function to create patches. you can think of this
         # as convolving on a 1d image to create patches
-        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, demo_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
+        print(type(sr))
+        print(type(int(sr)))
+        print(sr)
+        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, demo_len, 1], strides=[1, 1, demo_len, 1], rates=[1, 1, 1, 1], padding='VALID')
         patches = tf.squeeze(patches)
 
         # NEED TO RETURN SR HERE TOO
