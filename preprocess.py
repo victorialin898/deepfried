@@ -63,12 +63,12 @@ def get_demos(num_demo=10):
         audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
         audio = tf.squeeze(audio)
 
-        # add dimensions so that we can treat the audio file like an image
-        audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
-        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
-        patches = tf.squeeze(patches)
+        # # add dimensions so that we can treat the audio file like an image
+        # audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
+        # patches = tf.image.extract_patches(images=audio, sizes=[1, 1, patch_len, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1], padding='VALID')
+        # patches = tf.squeeze(patches)
 
-        return (tf.data.Dataset.from_tensor_slices(patches), sr)
+        return (audio, sr)
 
     dir_path = './data/VCTK-Corpus/wav48/**/*.wav'
     demos = tf.data.Dataset.list_files(dir_path) [:num_demo]
