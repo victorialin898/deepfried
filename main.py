@@ -19,10 +19,12 @@ scale = 2
 def corrupt_batch(batch):
     # raise Exception(batch.shape)
     corrupted = decimate(batch, scale, axis=-2)
-    print("decimated")
-    f = interpolate.interp1d(np.arange(corrupted.shape[1]), corrupted, kind='cubic', axis=-2)
-    print("interpolated")
-    upscaled = f(np.arange(0.0, corrupted.shape[1] - 1, (corrupted.shape[1] - 1) /batch.shape[1]))
+    #f = interpolate.interp1d(np.arange(corrupted.shape[1]), corrupted, kind='cubic', axis=-2)
+    corrupted = corrupted.flatten()
+    new_length = len(corrupted) * scale
+    f = interpolate.splrep(np.arange(new_length, step=scale), corrupted)
+    upscaled = tf.reshape(interpolate.splev(np.arange(new_length), f), (batch.shape[0], -1, 1))
+    #upscaled = f(np.arange(0.0, corrupted.shape[1] - 1, (corrupted.shape[1] - 1) /batch.shape[1]))
     return upscaled
 
 """
@@ -38,12 +40,11 @@ def train(model, train_data_iterator):
             batch_sharpened = model.call(batch_corrupted)
             loss = model.loss_function(batch_sharpened, batch)
             accuracy = model.snr_function(batch_sharpened, batch)
-
             lsd = model.lsd(batch_sharpened, batch)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        print("BATCH %d LOSS %f SNR %f"%(iteration, loss, accuracy))
+        print("BATCH %d LOSS %f SNR %f LSD %f"%(iteration, loss, accuracy, lsd))
 
 """
     Tests model in batches on corrupted and original audio files.
@@ -116,20 +117,20 @@ def main():
         train_data_iterator, test_data_iterator = get_dataset_iterator(batch_size=model.batch_size, VCTK=False)
     print("Finished reprocessing.")
 
-
     test_demo(model)
     raise Exception("DEMO TESTED")
+
 
     print("Beginning training...")
     for _ in range(model.epochs):
         train(model, train_data_iterator)
     print("Training complete.")
 
-    print("Beginning testing...")
-    loss, accuracy, lsds = test(model, test_data_iterator)
-    print("Average loss: " + str(loss.numpy()))
-    print("Average accuracy (SNR): " + str(accuracy.numpy()))
-    print("Average accuracy (LSD): " + str(lsds.numpy()))
+    #print("Beginning testing...")
+    #loss, accuracy, lsds = test(model, test_data_iterator)
+    #print("Average loss: " + str(loss.numpy()))
+    #print("Average accuracy (SNR): " + str(accuracy.numpy()))
+    #print("Average accuracy (LSD): " + str(lsds.numpy()))
 
 
 
