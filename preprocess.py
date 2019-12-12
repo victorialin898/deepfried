@@ -17,7 +17,7 @@ scale = 2
     @param VCTK : whether to to load and return the voice data. If false, loads the piano data.
     @returns : an iterator each for the train set and the test set
 """
-def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=True):
+def get_dataset_iterator(batch_size=128, train_size=18000, test_size=5000, VCTK=True):
     # TODO: figure out exactly how many training and testing samples we want
     """
         @param file_path : path to a wav file, string
@@ -44,6 +44,8 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 
     # NOTE: if we want to parallelize this, we have to use dataset.map(), and then flatten after
     dataset = dataset.flat_map(map_func=extract_patches)
+
+    dataset = dataset.repeat(4)
 
     # need to shuffle again after creating patches
     dataset = dataset.shuffle(buffer_size=250000)

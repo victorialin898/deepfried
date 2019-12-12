@@ -46,7 +46,9 @@ def train(model, train_data_iterator):
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        print("BATCH %d LOSS %f SNR %f LSD %f"%(iteration, loss, accuracy, lsd))
+
+        if iteration % 1  == 0:
+            print("BATCH %d LOSS %f SNR %f LSD %f"%(iteration, loss, accuracy, lsd))
 
 """
     Tests model in batches on corrupted and original audio files.
@@ -112,7 +114,8 @@ def main():
     print("Finished reprocessing.")
 
     print("Beginning training...")
-    for _ in range(model.epochs):
+    for epoch in range(model.epochs):
+        print("EPOCH %d" % epoch)
         train(model, train_data_iterator)
     print("Training complete.")
 

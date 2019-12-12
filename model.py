@@ -124,7 +124,7 @@ class Model(tf.keras.Model):
 
         self.learning_rate = 10e-4   # Paper uses 10e-4
         self.batch_size = 128        # Batch size=128 vs patch size=6000
-        self.epochs = 10             # Paper uses 400
+        self.epochs = 4             # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # We need the following two layers, but they don't neatly fall into either the encoder or decoder structure
@@ -159,8 +159,9 @@ class Model(tf.keras.Model):
         return tf.reduce_mean(snrs)
 
     def lsd(self, encoded, originals, n_fft=2048, step=10):
-        S_y = tf.signal.stft(np.array(tf.squeeze(originals)), n_fft, step)
-        S_x = tf.signal.stft(np.array(tf.squeeze(encoded)), n_fft, step)
+        encoded, originals = amplitude_to_decibel(tf.squeeze(encoded)), amplitude_to_decibel(tf.squeeze(originals))
+        S_y = tf.signal.stft(np.array(originals), n_fft, step)
+        S_x = tf.signal.stft(np.array(encoded), n_fft, step)
         logspec_y = tf.square(np.log1p(tf.abs(S_y)))
         logspec_x = tf.square(np.log1p(tf.abs(S_x)))
         squared_diff = tf.square(logspec_y - logspec_x)
