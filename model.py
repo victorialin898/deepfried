@@ -166,17 +166,17 @@ class Model(tf.keras.Model):
         squared_diff = tf.square(logspec_y - logspec_x)
 
         # Use for non display variable
-        if os.environ.get('DISPLAY','') == '':
-            print('no display found. Using non-interactive Agg backend')
-            matplotlib.use('Agg')
+        #if os.environ.get('DISPLAY','') == '':
+        #    print('no display found. Using non-interactive Agg backend')
+        #    matplotlib.use('Agg')
 
-        plt.imshow(logspec_y.numpy().T, aspect=10)
-        plt.tight_layout()
-        plt.savefig('original_spectrum.png')  
+        #plt.imshow(logspec_y.numpy().T, aspect=10)
+        #plt.tight_layout()
+        #plt.savefig('original_spectrum.png')  
 
-        plt.imshow(logspec_x.numpy().T, aspect=10)
-        plt.tight_layout()
-        plt.savefig('predicted_spectrum.png')  
+        #plt.imshow(logspec_x.numpy().T, aspect=10)
+        #plt.tight_layout()
+        #plt.savefig('predicted_spectrum.png')  
 
         return tf.reduce_mean(tf.math.sqrt(squared_diff))
 

@@ -5,7 +5,7 @@ import glob
 import librosa
 
 patch_len = 6000
-demo_len =  96000
+demo_len =  48000
 scale = 2
 """
     TODO:
