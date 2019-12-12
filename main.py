@@ -9,6 +9,8 @@ import time
 import soundfile as sf
 from scipy.signal import decimate
 from scipy import interpolate
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 patch_len = 6000
 scale = 2
@@ -70,21 +72,21 @@ def test(model, test_data_iterator):
 
 def test_demo(model):
     wav_filepaths, wav_files, sampling_rates = get_demos()
-    output_dir = './demo/output/'
+    output_dir = 'demo/output/'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     for i in range(len(wav_files)):
 
         batch = tf.expand_dims(tf.expand_dims(wav_files[i], 0), -1)
-        print("starting to corrupt")
         batch_corrupted = corrupt_batch(batch)
-        print("starting to sharpen")
         batch_sharpened = model.call(batch_corrupted)
-        print("Done with batch")
-        # raise Exception(os.path.join(output_dir, os.path.basename(wav_filepaths[i])))
+       
+        sf.write(file=os.path.join(output_dir, str(i + 1)+'_sharpened.wav'), data=tf.squeeze(batch_sharpened), samplerate=sampling_rates[i])
+        sf.write(file=os.path.join(output_dir, str(i + 1)+'_corrupted.wav'), data=tf.squeeze(batch_corrupted), samplerate=sampling_rates[i])
+        sf.write(file=os.path.join(output_dir, str(i + 1)+'_original.wav'), data=tf.squeeze(batch), samplerate=sampling_rates[i])
+        
 
-        sf.write(file=os.path.join(output_dir, str(i + 1)+'_sharpened.wav'), data=batch_sharpened, samplerate=sampling_rates[i])
     # raise Exception(wav_filepaths, wav_files, sampling_rates)
     # for iteration, b in enumerate(demos_data_iterator):
     #     batch, sr = b[0], b[1]
@@ -103,36 +105,24 @@ def test_demo(model):
         #sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
 #
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in {"VCTK","PIANO"}:
-        print("USAGE: python assignment.py <Data Set>")
-        print("<Data Set>: [VCTK/PIANO]")
-        exit()
-
     model = Model()
 
     print("Running preprocessing...")
-    if sys.argv[1] == "VCTK":
-        train_data_iterator, test_data_iterator = get_dataset_iterator(batch_size=model.batch_size, VCTK=True)
-    elif sys.argv[1] == "PIANO":
-        train_data_iterator, test_data_iterator = get_dataset_iterator(batch_size=model.batch_size, VCTK=False)
+    train_data_iterator, test_data_iterator = get_dataset_iterator(batch_size=model.batch_size, VCTK=True)
     print("Finished reprocessing.")
-
-    test_demo(model)
-    raise Exception("DEMO TESTED")
-
 
     print("Beginning training...")
     for _ in range(model.epochs):
         train(model, train_data_iterator)
     print("Training complete.")
 
-    #print("Beginning testing...")
-    #loss, accuracy, lsds = test(model, test_data_iterator)
-    #print("Average loss: " + str(loss.numpy()))
-    #print("Average accuracy (SNR): " + str(accuracy.numpy()))
-    #print("Average accuracy (LSD): " + str(lsds.numpy()))
+    print("Beginning testing...")
+    loss, accuracy, lsds = test(model, test_data_iterator)
+    print("Average loss: " + str(loss.numpy()))
+    print("Average accuracy (SNR): " + str(accuracy.numpy()))
+    print("Average accuracy (LSD): " + str(lsds.numpy()))
 
-
+    test_demo(model)
 
 if __name__ == '__main__':
    main()

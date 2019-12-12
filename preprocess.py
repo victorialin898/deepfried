@@ -62,17 +62,13 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 """
 gets a few demos
 """
-def get_demos(num_demo=1, train_size=8000):
+def get_demos():
     wav_filepaths = glob.glob("./demo/*.wav")
     wav_files, sampling_rates = zip(*[librosa.load(f) for f in wav_filepaths])
     wav_files = list(wav_files)
     sampling_rates = list(sampling_rates)
     for i in range(len(wav_files)):
-        print(wav_files[i].shape)
-        # raise Exception(wav.shape, len(wav))
-        # if wav_files[i].shape[0] % 2 != 0:
         wav_files[i] = wav_files[i][:patch_len * 10]
-        print(wav_files[i].shape)
     return wav_filepaths, wav_files, sampling_rates
 
 

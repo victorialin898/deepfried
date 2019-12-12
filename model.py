@@ -124,7 +124,7 @@ class Model(tf.keras.Model):
 
         self.learning_rate = 10e-4   # Paper uses 10e-4
         self.batch_size = 128        # Batch size=128 vs patch size=6000
-        self.epochs = 1              # Paper uses 400
+        self.epochs = 10             # Paper uses 400
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # We need the following two layers, but they don't neatly fall into either the encoder or decoder structure
@@ -167,6 +167,7 @@ class Model(tf.keras.Model):
 
         # Use for non display variable
 
+        # if wav_files[i].shape[0] % 2 != 0:
         return tf.reduce_mean(tf.math.sqrt(squared_diff))
 
 # TODO: Reverse data preprocessing to turn the output of our model into a listenable .wav file?
