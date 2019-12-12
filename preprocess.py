@@ -59,34 +59,21 @@ def get_dataset_iterator(batch_size=128, train_size=8000, test_size=2000, VCTK=T
 
     return train_dataset, test_dataset
 
+"""
+gets a few demos
+"""
 def get_demos(num_demo=1, train_size=8000):
-    def get_samples(file_path):
-        audio, sr = tf.audio.decode_wav(tf.io.read_file(file_path))
-        audio = tf.squeeze(audio)
-
-        # add dimensions so that we can treat the audio file like an image
-        audio = tf.expand_dims(tf.expand_dims(tf.expand_dims(audio, -1), 0), 0)
-
-        # borrow the extract_patches function to create patches. you can think of this
-        # as convolving on a 1d image to create patches
-        print(type(sr))
-        print(type(int(sr)))
-        print(sr)
-        patches = tf.image.extract_patches(images=audio, sizes=[1, 1, demo_len, 1], strides=[1, 1, demo_len, 1], rates=[1, 1, 1, 1], padding='VALID')
-        patches = tf.squeeze(patches)
-
-        # NEED TO RETURN SR HERE TOO
-        return tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(patches), tf.data.Dataset.from_tensors(sr)))
-
-    dir_path = './data/VCTK-Corpus/wav48/**/*.wav'
-    demos = tf.data.Dataset.list_files(dir_path)
-    demos = demos.flat_map(map_func=get_samples)
-
-    # Take one batch of 10 examples
-    demos_data = demos.take(num_demo)
-    demos_data = demos_data.batch(1, drop_remainder=True)
-
-    return demos_data
+    wav_filepaths = glob.glob("./demo/*.wav")
+    wav_files, sampling_rates = zip(*[librosa.load(f) for f in wav_filepaths])
+    wav_files = list(wav_files)
+    sampling_rates = list(sampling_rates)
+    for i in range(len(wav_files)):
+        print(wav_files[i].shape)
+        # raise Exception(wav.shape, len(wav))
+        # if wav_files[i].shape[0] % 2 != 0:
+        wav_files[i] = wav_files[i][:patch_len * 10]
+        print(wav_files[i].shape)
+    return wav_filepaths, wav_files, sampling_rates
 
 
 def get_stft(signal, n_fft):

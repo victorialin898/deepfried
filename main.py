@@ -17,6 +17,7 @@ scale = 2
     @param batch : a tensor of (batch_size, 6000)
 """
 def corrupt_batch(batch):
+    # raise Exception(batch.shape)
     corrupted = decimate(batch, scale, axis=-2)
     print("decimated")
     f = interpolate.interp1d(np.arange(corrupted.shape[1]), corrupted, kind='cubic', axis=-2)
@@ -38,11 +39,7 @@ def train(model, train_data_iterator):
             loss = model.loss_function(batch_sharpened, batch)
             accuracy = model.snr_function(batch_sharpened, batch)
 
-            print('HSAPES')
-            print(batch_sharpened.shape, batch.shape)
-
             lsd = model.lsd(batch_sharpened, batch)
-            print(lsd)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -71,20 +68,35 @@ def test(model, test_data_iterator):
     return tf.reduce_mean(losses), tf.reduce_mean(accuracies), tf.reduce_mean(lsds)
 
 def test_demo(model):
-    demos_data_iterator = get_demos()
+    wav_filepaths, wav_files, sampling_rates = get_demos()
+    output_dir = './demo/output/'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    for iteration, b in enumerate(demos_data_iterator):
-        batch, sr = b[0], b[1]
-        print("TEST DMEOMEOMDOEMDEMODMOEDMOEMOE")
-        print(batch.shape)
-        print(sr.numpy())
-        print(sr)
-        batch = tf.expand_dims(batch, -1)
+    for i in range(len(wav_files)):
+
+        batch = tf.expand_dims(tf.expand_dims(wav_files[i], 0), -1)
         print("starting to corrupt")
         batch_corrupted = corrupt_batch(batch)
         print("starting to sharpen")
         batch_sharpened = model.call(batch_corrupted)
-    
+        print("Done with batch")
+        # raise Exception(os.path.join(output_dir, os.path.basename(wav_filepaths[i])))
+
+        sf.write(file=os.path.join(output_dir, str(i + 1)+'_sharpened.wav'), data=batch_sharpened, samplerate=sampling_rates[i])
+    # raise Exception(wav_filepaths, wav_files, sampling_rates)
+    # for iteration, b in enumerate(demos_data_iterator):
+    #     batch, sr = b[0], b[1]
+    #     print("TEST DMEOMEOMDOEMDEMODMOEDMOEMOE")
+    #     # print(batch.shape)
+    #     print(sr.numpy())
+    #     print(sr)
+    #     batch = tf.expand_dims(batch, -1)
+    #     print("starting to corrupt")
+    #     batch_corrupted = corrupt_batch(batch)
+    #     print("starting to sharpen")
+    #     batch_sharpened = model.call(batch_corrupted)
+
         #sf.write(file=os.path.join('output/', str(iteration + 1)+'_hr.wav'), data=batch[0], samplerate=sr)
         #sf.write(file=os.path.join('output/', str(iteration + 1)+'_lr.wav'), data=batch_corrupted[0], samplerate=sr)
         #sf.write(file=os.path.join('output/', str(iteration + 1)+'_pr.wav'), data=batch_sharpened[0], samplerate=sr)
@@ -104,12 +116,9 @@ def main():
         train_data_iterator, test_data_iterator = get_dataset_iterator(batch_size=model.batch_size, VCTK=False)
     print("Finished reprocessing.")
 
-    # TODO: remove this loop. this is just to test that our data is the correct shape
-    # for iteration, data in enumerate(train_data_iterator):
-    #     print(iteration, data.shape)
 
-    #test_demo(model)
-    print('test data due')
+    test_demo(model)
+    raise Exception("DEMO TESTED")
 
     print("Beginning training...")
     for _ in range(model.epochs):
