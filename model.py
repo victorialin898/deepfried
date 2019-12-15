@@ -23,15 +23,12 @@ def subpixel_shuffle(input):
     return input
 
 
-# Downsampling blocks for bottleneck architecture
+"""
+    Downsampling blocks for bottleneck architecture
+"""
 class Encoder(tf.keras.layers.Layer):
     def __init__(self):
         super(Encoder, self).__init__()
-
-        # I believe these should be Conv1D, because the data is a time series. Right?
-        # TODO: decide how many Conv2D layers we want. The paper calls this hyperparameter B, so currently B=4 for us.
-        #       The paper  claims to use B=4, but their code on github uses B=7.
-        #       Note that this B should be the same in the Encoder and the Decoder
 
         # Given encoder_conv_b
         #   - number of filters (i.e. output depth) = min(2^(6+b), 512)
@@ -43,9 +40,6 @@ class Encoder(tf.keras.layers.Layer):
         self.encoder_conv_2 = Conv1D(filters=256, kernel_size=33, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
         self.encoder_conv_3 = Conv1D(filters=512, kernel_size=17, strides=2, padding='same', activation=tf.keras.layers.LeakyReLU(alpha=0.2), kernel_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1))
 
-        # keeping alpha at 0.2 for now
-        # self.relu = LeakyReLU(alpha=0.2)
-        # Since dropout and relu all commute, we can use the builtin activation to Conv1d layers i
         self.batch_norm_1 = BatchNormalization()
         self.batch_norm_2 = BatchNormalization()
         self.batch_norm_3 = BatchNormalization()
@@ -66,14 +60,13 @@ class Encoder(tf.keras.layers.Layer):
         return [output_1, output_2, output_3]
 
 
-# Upsampling blocks for bottleneck architecture
+"""
+    Upsampling blocks for bottleneck architecture
+"""
 class Decoder(tf.keras.layers.Layer):
     def __init__(self):
         super(Decoder, self).__init__()
 
-        # TODO: Figure out what layer to use for upsampling since keras has no Conv1DTranspose
-        #   - keras.layers.UpSampling1D (not learnable, see https://stackoverflow.com/questions/53654310/what-is-the-difference-between-upsampling2d-and-conv2dtranspose-functions-in-ker)
-        #   - create our own (https://stackoverflow.com/questions/44061208/how-to-implement-the-conv1dtranspose-in-keras)
 
         # Given encoder_conv_b
         #   - number of filters (i.e. output depth) = min(2^(7+B-b+1), 512)
@@ -114,8 +107,9 @@ class Decoder(tf.keras.layers.Layer):
 
         return output
 
-
-# Main model: performs autoeocoding and the subpixel shuffling
+"""
+    # Main model: performs autoeocoding and the subpixel shuffling
+"""
 class Model(tf.keras.Model):
     def __init__(self):
         super(Model, self).__init__()
@@ -148,16 +142,17 @@ class Model(tf.keras.Model):
 
 
     # Re-implementation of scipy.stats.signaltonoise which is deprecated :(
+    # SNR (Signal to noise ratio) is a measure of performance of our model. The higher the better!
     def snr_function(self, encoded, originals):
         # Using equation for "SNR Calculation - Complicated" from sciencing.com
 
-        # CONVERTING TO DECIBELS FIRST:
-        encoded, originals = amplitude_to_decibel(tf.squeeze(encoded)), amplitude_to_decibel(tf.squeeze(originals))
+        encoded, originals = amplitude_to_decibel(tf.squeeze(encoded)), amplitude_to_decibel(tf.squeeze(originals))  # Convert to decibel
         mean = tf.square(scipy.linalg.norm(originals, axis=1))
         std = tf.square(scipy.linalg.norm(originals-encoded, axis=1))
         snrs = np.where(std==0, 0, 10* tf.math.log(mean/std))
         return tf.reduce_mean(snrs)
 
+    # LSD (log spectral distance) is another measure of performance of our model. The lower the better!
     def lsd(self, encoded, originals, n_fft=2048, step=10):
         encoded, originals = amplitude_to_decibel(tf.squeeze(encoded)), amplitude_to_decibel(tf.squeeze(originals))
         S_y = tf.signal.stft(np.array(originals), n_fft, step)
@@ -167,8 +162,5 @@ class Model(tf.keras.Model):
         squared_diff = tf.square(logspec_y - logspec_x)
 
         # Use for non display variable
-
-        # if wav_files[i].shape[0] % 2 != 0:
         return tf.reduce_mean(tf.math.sqrt(squared_diff))
 
-# TODO: Reverse data preprocessing to turn the output of our model into a listenable .wav file?
