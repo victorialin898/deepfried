@@ -106,11 +106,11 @@ def main():
     train_data_iterator, test_data_iterator = get_dataset_iterator(batch_size=model.batch_size, VCTK=True)
     print("Finished reprocessing.")
 
-    print("Beginning training...")
-    for epoch in range(model.epochs):
-        print("EPOCH %d" % epoch)
-        train(model, train_data_iterator)
-    print("Training complete.")
+    # print("Beginning training...")
+    # for epoch in range(model.epochs):
+    #     print("EPOCH %d" % epoch)
+    #     train(model, train_data_iterator)
+    # print("Training complete.")
 
     print("Beginning testing...")
     loss, accuracy, lsds = test(model, test_data_iterator)

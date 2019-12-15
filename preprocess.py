@@ -3,6 +3,7 @@ import tensorflow as tf
 from scipy import signal, io, interpolate
 import glob
 import librosa
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 patch_len = 6000    # Length per time series sample
 scale = 2           # Downsampling factor for our corruption
